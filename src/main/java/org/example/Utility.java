@@ -1,26 +1,35 @@
 package org.example;
 
-import com.opencsv.CSVWriter;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
+import com.itextpdf.kernel.pdf.canvas.parser.listener.ITextExtractionStrategy;
+import com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-//import org.apache.logging.log4j.Logger;
-//import org.apache.logging.log4j.LogManager;
+
+import com.opencsv.CSVWriter;
+
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
 
 /**
  * @description: TODO
  * @author: Jianjun Gao
- * @date: 2025/3/5 11:22
+ * {@code @date:} 2025/3/5 11:22
  * @version: 1.0
  */
 public class Utility {
@@ -69,7 +78,7 @@ public class Utility {
         Matcher ruleYear = Pattern.compile("[0-9] Years").matcher(text);
         if(ruleYear.find()) {
             j = ruleYear.end();
-            text = text.substring(j+1, text.length());
+            text = text.substring(j+1);
         }
         
         Matcher matcher = Pattern.compile("[0-9]").matcher(text);
@@ -228,11 +237,83 @@ public class Utility {
         }
     }
 
+    //检查并创建目录
     public static boolean createIfNotExists(String path) {
         File directory = new File(path);
         if (!directory.exists()) {
             return directory.mkdirs();
         }
         return directory.isDirectory();
+    }
+
+    public static boolean convertPDF2TXT(String pdfFilename, String outputFilename) {
+        try {
+            PdfDocument pdfDoc = new PdfDocument(new PdfReader(pdfFilename));
+            StringBuilder fullContent = new StringBuilder();
+
+            int numberOfPages = pdfDoc.getNumberOfPages();
+
+            // 遍历每一页，提取文本
+            for (int i = 1; i <= numberOfPages; i++) {
+                // 创建文本提取策略
+                ITextExtractionStrategy strategy = new SimpleTextExtractionStrategy();
+
+                // 提取当前页面的文本
+                String pageContent = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(i), strategy);
+                fullContent.append(pageContent);
+            }
+            FileWriter writer;
+            try {
+                writer = new FileWriter(outputFilename);
+                writer.write(fullContent.toString());
+                writer.flush();
+                writer.close();
+            } catch (IOException e) {
+//                throw new RuntimeException(e);
+                LOG.error(e.getMessage());
+                pdfDoc.close();
+                return false;
+            }
+            // 关闭 PDF 文档
+            pdfDoc.close();
+            return true;
+
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            LOG.error("Err file: {}", pdfFilename);
+            return false;
+        }
+    }
+
+    public static String getContentBetween2Words(String inputText, String word1, String word2) {
+        if (inputText == null || word1 == null || word2 == null) {
+            LOG.warn("输入参数不能为空");
+            return "";
+        }
+
+        try {
+            // 查找第一个单词
+            Matcher firstWord = Pattern.compile(word1).matcher(inputText);
+            if (!firstWord.find()) {
+                LOG.warn("未找到第一个单词: {}", word1);
+                return "";
+            }
+            int startPosition = firstWord.start();
+
+            // 查找第二个单词的第一次出现位置（在第一个单词之后）
+            Matcher secondWord = Pattern.compile(word2).matcher(inputText);
+            if (!secondWord.find(startPosition)) {
+                LOG.warn("在第一个单词之后未找到第二个单词: {}", word2);
+                return "";
+            }
+            int endPosition = secondWord.start();
+
+            // 返回两个单词之间的文本
+            return inputText.substring(startPosition + word1.length(), endPosition).trim();
+
+        } catch (Exception e) {
+            LOG.error("处理文本时发生错误: {}", e.getMessage());
+            return "";
+        }
     }
 }
