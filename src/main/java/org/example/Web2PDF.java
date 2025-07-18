@@ -7,10 +7,7 @@ import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 
 /**
 * @description: TODO
@@ -53,4 +50,6 @@ public class Web2PDF {
         LOG.info("PDF文件已保存到: {}", outputPath);
         return true;
     }
+
+
 }
